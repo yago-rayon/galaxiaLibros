@@ -22,6 +22,10 @@ const usuarioSchema = mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    rol: {
+        type: String,
+        default: 'Usuario'
+    },
     novelasPublicadas:[],
     novelasSeguidas:[]
 })

@@ -62,7 +62,7 @@ router.post('/registro', async (req, res) => {
     }
 })
 
-router.post('/login',validarToken,async(req,res)=>{
+router.post('/login',async(req,res)=>{
     //Validar usuario
     const { error } = schemaLogin.validate(req.body)
     
@@ -90,7 +90,8 @@ router.post('/login',validarToken,async(req,res)=>{
     //Creación de token JWT
     const token = jwt.sign({
         nickname: usuario.nickname,
-        id: usuario._id
+        id: usuario._id,
+        rol: usuario.rol
     }, process.env.TOKEN_SECRET)
     
     return res.header('auth-token', token).json({
@@ -99,4 +100,33 @@ router.post('/login',validarToken,async(req,res)=>{
     }).status(200);
     //Respuesta si todo bien
 })
+router.get('/',async(req,res)=>{
+    
+    let usuarios = await Usuario.find();
+    if (!usuarios){
+        return res.status(400).json(
+            { error: 'No hay usuarios' }
+        )
+    }
+    return res.status(200).json(
+        {listaUsuarios: usuarios}
+    )
+    
+    //Respuesta si no es admin
+})
+router.get('/:email',async(req,res)=>{
+    
+    let usuarioEncontrado = await Usuario.findOne({email:req.params.email});
+    if (!usuarioEncontrado){
+        return res.status(400).json(
+            { error: 'No existe el usuario' }
+        )
+    }
+    return res.status(200).json(
+        {usuario: usuarioEncontrado}
+    )
+    
+    //Respuesta si no es admin
+})
+
 module.exports = router;
