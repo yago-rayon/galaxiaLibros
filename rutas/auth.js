@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const Usuario = require('../modelos/Usuario');
-
+const validarToken = require('../rutas/validarToken');
 
 // Validaciones con @hapy/joi
 const Joi = require('@hapi/joi');
 
 const schemaRegistro = Joi.object({
-    nombre: Joi.string().min(6).max(255).required(),
+    nickname: Joi.string().min(6).max(255).required(),
     email: Joi.string().min(6).max(255).required().email(),
     password: Joi.string().min(6).max(1024).required()
 })
@@ -46,7 +46,7 @@ router.post('/registro', async (req, res) => {
     const passwordHasheada = await bcrypt.hash(req.body.password, salt);
 
     const usuario = new Usuario({
-        nombre: req.body.nombre,
+        nickname: req.body.nickname,
         email: req.body.email,
         password: passwordHasheada
     });
@@ -62,7 +62,7 @@ router.post('/registro', async (req, res) => {
     }
 })
 
-router.post('/login',async(req,res)=>{
+router.post('/login',validarToken,async(req,res)=>{
     //Validar usuario
     const { error } = schemaLogin.validate(req.body)
     
@@ -89,7 +89,7 @@ router.post('/login',async(req,res)=>{
     }
     //Creación de token JWT
     const token = jwt.sign({
-        nombre: usuario.nombre,
+        nickname: usuario.nickname,
         id: usuario._id
     }, process.env.TOKEN_SECRET)
     

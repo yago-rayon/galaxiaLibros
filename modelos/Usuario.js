@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const usuarioSchema = mongoose.Schema({
-    nombre: {
+    nickname: {
         type: String,
         required: true,
         min: 6,
@@ -21,7 +21,9 @@ const usuarioSchema = mongoose.Schema({
     date: {
         type: Date,
         default: Date.now
-    }
+    },
+    novelasPublicadas:[],
+    novelasSeguidas:[]
 })
 
 module.exports = mongoose.model('Usuario', usuarioSchema);
