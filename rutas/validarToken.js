@@ -1,7 +1,7 @@
 // Importar token JWT
 const jwt = require('jsonwebtoken');
 
-// middleware para validar JWT (rutas protegidas)
+// Middleware para validar JWT (rutas protegidas)
 const verificarToken = (req, res, next) => {
     const token = req.header('auth-token');
     if (!token) {
@@ -12,7 +12,7 @@ const verificarToken = (req, res, next) => {
         req.usuario = verificar;
         next(); // continuamos
     } catch (error) {
-        res.status(400).json({error: error, mensaje: 'Token no válido'});
+        res.status(400).json({ error: error, mensaje: 'Token no válido' });
     }
 }
 

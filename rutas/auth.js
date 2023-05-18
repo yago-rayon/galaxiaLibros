@@ -26,18 +26,25 @@ router.post('/registro', async (req, res) => {
 
     // Validar Usuario
     const { error } = schemaRegistro.validate(req.body)
-    
     if (error) {
         return res.status(400).json(
             {error: error.details[0].message}
         )
     }
 
+    // Validar nickname único 
+    const nicknameExiste = await Usuario.findOne({ nickname: req.body.nickname });
+        if (nicknameExiste) {
+            return res.status(400).json(
+                {error: 'El nickname no está disponible'}
+            )
+        }
+
     // Validar email único 
     const emailExiste = await Usuario.findOne({ email: req.body.email });
         if (emailExiste) {
             return res.status(400).json(
-                {error: 'Email ya registrado'}
+                {error: 'Ya existe una cuenta asociada a este email'}
             )
         }
 
@@ -100,6 +107,7 @@ router.post('/login',async(req,res)=>{
     }).status(200);
     //Respuesta si todo bien
 })
+
 router.get('/',async(req,res)=>{
     
     let usuarios = await Usuario.find();
@@ -112,21 +120,6 @@ router.get('/',async(req,res)=>{
         {listaUsuarios: usuarios}
     )
     
-    //Respuesta si no es admin
-})
-router.get('/:email',async(req,res)=>{
-    
-    let usuarioEncontrado = await Usuario.findOne({email:req.params.email});
-    if (!usuarioEncontrado){
-        return res.status(400).json(
-            { error: 'No existe el usuario' }
-        )
-    }
-    return res.status(200).json(
-        {usuario: usuarioEncontrado}
-    )
-    
-    //Respuesta si no es admin
 })
 
 module.exports = router;

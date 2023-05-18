@@ -26,8 +26,14 @@ const usuarioSchema = mongoose.Schema({
         type: String,
         default: 'Usuario'
     },
-    novelasPublicadas:[],
-    novelasSeguidas:[]
+    novelasPublicadas: {
+        type: Array,
+        default: []
+    },
+    novelasSeguidas: {
+        type: Array,
+        default: []
+    }
 })
 
 module.exports = mongoose.model('Usuario', usuarioSchema);
