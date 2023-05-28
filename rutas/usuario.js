@@ -8,9 +8,9 @@ const bcrypt = require('bcrypt');
 const Joi = require('@hapi/joi');
 
 const schemaUsuario = Joi.object({
-    nickname: Joi.string().min(6).max(255).required(),
+    nickname: Joi.string().min(6).max(32).required(),
     email: Joi.string().min(6).max(255).required().email(),
-    password: Joi.string().min(6).max(1024).required(),
+    password: Joi.string().min(6).max(25).required(),
     rol: Joi.string().min(3).max(16)
 })
 

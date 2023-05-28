@@ -19,13 +19,13 @@ mongoose.connect(uri, opciones)
 // importar rutas
 const authRutas = require('./rutas/auth');
 const usuarioRutas = require('./rutas/usuario');
-const pruebaProteccionRutas = require('./rutas/pruebaProteccion');
+const novelaRutas = require('./rutas/novela');
 const validarToken = require('./rutas/validarToken');
 
 // route middlewares
 app.use('/api/auth', authRutas);
 app.use('/api/usuario', usuarioRutas);
-app.use('/api/pruebaProc', validarToken, pruebaProteccionRutas);
+app.use('/api/novela', novelaRutas);
 
 app.get('/', (req, res) => {
     res.json({

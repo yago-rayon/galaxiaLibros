@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
-
+const paginacion = require('mongoose-paginate-v2');
 const novelaSchema = mongoose.Schema({
+    nicknameAutor:{
+        type: String,
+        required: true,
+        min: 6,
+        max: 255
+    },
     titulo: {
         type: String,
         required: true,
@@ -12,6 +18,14 @@ const novelaSchema = mongoose.Schema({
         required: true,
         min: 6,
         max: 1024
+    },
+    generos:{
+        type: Array,
+        default: []
+    },
+    etiquetas:{
+        type: Array,
+        default: []
     },
     date: {
         type: Date,
@@ -32,7 +46,12 @@ const novelaSchema = mongoose.Schema({
     valoraciones: {
         type: Array,
         default: []
+    },
+    visitas:{
+        type: Number,
+        default: 0
     }
 })
 
+novelaSchema.plugin(paginacion);
 module.exports = mongoose.model('Novela', novelaSchema);
