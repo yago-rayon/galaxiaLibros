@@ -27,13 +27,14 @@ const novelaSchema = mongoose.Schema({
         type: Array,
         default: []
     },
-    date: {
+    fechaCreacion: {
         type: Date,
         default: Date.now
     },
     capitulos: {
         type: [
             {
+                numero: Number,
                 titulo: String,
                 contenido: String
             }

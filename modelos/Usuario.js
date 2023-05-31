@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const paginacion = require('mongoose-paginate-v2');
 const usuarioSchema = mongoose.Schema({
     nickname: {
         type: String,
@@ -18,7 +18,7 @@ const usuarioSchema = mongoose.Schema({
         required: true,
         minlength: 6
     },
-    date: {
+    fechaCreacion: {
         type: Date,
         default: Date.now
     },
@@ -35,5 +35,5 @@ const usuarioSchema = mongoose.Schema({
         default: []
     }
 })
-
+usuarioSchema.plugin(paginacion);
 module.exports = mongoose.model('Usuario', usuarioSchema);
