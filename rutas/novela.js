@@ -5,6 +5,8 @@ const validarToken = require('./validarToken');
 
 // Validaciones con @hapy/joi
 const Joi = require('@hapi/joi');
+const fs = require('fs');
+const mime = require('mime-types');
 
 const schemaNovela = Joi.object({
     titulo: Joi.string().min(6).max(255).required(),
@@ -19,7 +21,7 @@ const schemaCapitulo = Joi.object({
 })
 
 router.post('/nueva', validarToken, async (req, res) => {
-
+    
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin'){
         return res.status(401).json({ error: 'No tienes permisos para crear una novela.' })
     }
@@ -39,32 +41,54 @@ router.post('/nueva', validarToken, async (req, res) => {
             { error: 'El titulo no está disponible' }
         )
     }
-    const novela = new Novela({
-        nicknameAutor: req.usuario.nickname,
-        titulo: req.body.titulo,
-        descripcion: req.body.descripcion,
-        generos: req.body.generos,
-        etiquetas: req.body.etiquetas
-    });
+    
     try {
-        const novelaGuardada = await novela.save();
-        const novelaPublicada = { novela_id: novelaGuardada._id, titulo : novelaGuardada.titulo, descripcion : novelaGuardada.descripcion, fechaCreacion: novelaGuardada.fechaCreacion }
+        
         if (req.usuario.email){
-            Usuario.findOneAndUpdate(
-                { email : req.usuario.email },
-                { $push: { novelasPublicadas: novelaPublicada } }
-                );
+            let usuario = await Usuario.findOne({email : req.usuario.email});
+            if (!usuario){
+                return res.status(400).json(
+                    { error: 'Error al buscar el usuario en la base de datos' }
+                )
+            }
+            autorNovela = { autor_id : usuario._id, autorNickname : usuario.nickname }
+            nombreImagen = 'placeholder.png';
+            if (req.file){
+                let imagen = req.file;
+                const extensionImagen = mime.extension(imagen.mimetype);
+                nombreImagen = imagen.originalname.split(extensionImagen)[0] + '-' + Date.now() + '.' + extensionImagen;
+                let rutaImagen = 'assets/img/'+nombreImagen;
+                fs.writeFile( rutaImagen , req.file.buffer, (error)=>{
+                    if (error){
+                        return res.status(400).json({ error: 'Error al subir imagen' })
+                    }
+                });
+            }
+            const novela = new Novela({
+                autor : autorNovela,
+                titulo: req.body.titulo,
+                descripcion: req.body.descripcion,
+                generos: req.body.generos,
+                etiquetas: req.body.etiquetas,
+                imagen: nombreImagen
+            });
+            const novelaGuardada = await novela.save();
+            if(novelaGuardada){
+                const novelaPublicada = { novela_id: novelaGuardada._id, titulo : novelaGuardada.titulo, descripcion : novelaGuardada.descripcion, fechaCreacion: novelaGuardada.fechaCreacion, imagen: novelaGuardada.imagen };
+                usuario.novelasPublicadas.push(novelaPublicada);
+                usuario.save();
+            }
         }else{
-            res.status(400).json({ error: 'Error al publicar novela' })
-        }
-        res.json({
-            error: null,
-            data: novelaGuardada
-        })
+            res.status(400).json({ error: 'Error al crear novela' })
+        } 
     } catch (error) {
-        res.status(400).json({ error: 'Error aqui' })
+        res.status(400).json({ error })
         return;
     }
+    return res.status(200).json({
+        error: null,
+        data: 'Novela creada con éxito'
+    })
 })
 
 router.get('/', async (req, res) => {
@@ -84,7 +108,6 @@ router.get('/', async (req, res) => {
     if(req.query.etiqueta){
         busqueda.etiquetas = req.query.etiqueta;
     }
-    console.log(opciones);
     const novelas = await Novela.paginate(busqueda,opciones)
 
     if (!novelas) {

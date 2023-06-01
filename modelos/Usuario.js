@@ -1,3 +1,4 @@
+const { ObjectId } = require('bson');
 const mongoose = require('mongoose');
 const paginacion = require('mongoose-paginate-v2');
 const usuarioSchema = mongoose.Schema({
@@ -28,11 +29,18 @@ const usuarioSchema = mongoose.Schema({
     },
     novelasPublicadas: {
         type: Array,
-        default: []
+        default: [{ novela_id: ObjectId, titulo: String, descripcion: String, fechaCreacion: Date }]
     },
     novelasSeguidas: {
         type: Array,
         default: []
+    },
+    estado:{
+        type: String,
+        default: 'Activo'
+    },
+    imagen:{
+        type: String
     }
 })
 usuarioSchema.plugin(paginacion);

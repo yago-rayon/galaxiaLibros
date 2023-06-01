@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
 const paginacion = require('mongoose-paginate-v2');
 const novelaSchema = mongoose.Schema({
-    nicknameAutor:{
-        type: String,
-        required: true,
-        min: 6,
-        max: 255
+    autor:{
+        type: Object,
+        required: true
     },
     titulo: {
         type: String,
@@ -51,6 +49,9 @@ const novelaSchema = mongoose.Schema({
     visitas:{
         type: Number,
         default: 0
+    },
+    imagen:{
+        type: String
     }
 })
 
