@@ -50,8 +50,8 @@ router.post('/nueva', validarToken, async (req, res) => {
                     { error: 'Error al buscar el usuario en la base de datos' }
                 )
             }
-            autorNovela = { autor_id : usuario._id, autorNickname : usuario.nickname }
-            nombreImagen = 'placeholder.png';
+            let autorNovela = { autor_id : usuario._id, autorNickname : usuario.nickname }
+            let nombreImagen = 'placeholder.png';
             if (req.file){
                 let imagen = req.file;
                 const extensionImagen = mime.extension(imagen.mimetype);
@@ -75,7 +75,7 @@ router.post('/nueva', validarToken, async (req, res) => {
             if(novelaGuardada){
                 const novelaPublicada = { novela_id: novelaGuardada._id, titulo : novelaGuardada.titulo, descripcion : novelaGuardada.descripcion, fechaCreacion: novelaGuardada.fechaCreacion, imagen: novelaGuardada.imagen };
                 usuario.novelasPublicadas.push(novelaPublicada);
-                usuario.save();
+                await usuario.save();
             }
         }else{
             res.status(400).json({ error: 'Error al crear novela' })
@@ -97,30 +97,24 @@ router.delete('/:_id', validarToken, async (req, res) => {
     try {
         console.log(req.params._id.trim());
         if (req.params._id){
-            let novela = await Novela.findById( req.params._id.trim() );
-            console.log(novela._id);
+            let novela = await Novela.findById( req.params._id );
             let usuario = await Usuario.findById( novela.autor.autor_id );
-            console.log(usuario._id);
-            // console.log(usuario);
             if (!usuario){
                 return res.status(400).json(
                     { error: 'Error al buscar el usuario en la base de datos' }
                 )
             }
-            console.log(req.usuario.email + " " + usuario.email);
             if( req.usuario.email != usuario.email ){
                 return res.status(400).json(
                     { error: 'Usuario incorrecto' }
                 )
             }
-
             if(novela){
-                console.log(usuario.novelasPublicadas);
-                let posicionNovela = usuario.novelasPublicadas.findIndex(elemento =>{ elemento.novela_id == novela._id });
-                console.log(posicionNovela);
-                delete usuario.novelasPublicadas[posicionNovela];
-                // novela.delete();
-                // usuario.save();
+                let posicionNovela = usuario.novelasPublicadas.findIndex((elemento) => {console.log(elemento.novela_id); return elemento.novela_id.toString() == novela._id });
+                usuario.novelasPublicadas.splice(posicionNovela,1);
+                fs.rm('assets/img/'+novela.imagen);
+                await Novela.findByIdAndDelete(novela._id);
+                await usuario.save();
             }
         }else{
             res.status(400).json({ error: 'Error al crear novela' })
