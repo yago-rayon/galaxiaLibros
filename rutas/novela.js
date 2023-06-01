@@ -21,7 +21,6 @@ const schemaCapitulo = Joi.object({
 })
 
 router.post('/nueva', validarToken, async (req, res) => {
-    
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin'){
         return res.status(401).json({ error: 'No tienes permisos para crear una novela.' })
     }
@@ -68,8 +67,8 @@ router.post('/nueva', validarToken, async (req, res) => {
                 autor : autorNovela,
                 titulo: req.body.titulo,
                 descripcion: req.body.descripcion,
-                generos: req.body.generos,
-                etiquetas: req.body.etiquetas,
+                generos: req.body.generos[0].split(','),
+                etiquetas: req.body.etiquetas[0].split(','),
                 imagen: nombreImagen
             });
             const novelaGuardada = await novela.save();
@@ -88,6 +87,51 @@ router.post('/nueva', validarToken, async (req, res) => {
     return res.status(200).json({
         error: null,
         data: 'Novela creada con éxito'
+    })
+})
+
+router.delete('/:_id', validarToken, async (req, res) => {
+    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin'){
+        return res.status(401).json({ error: 'No tienes permisos para eliminar una novela.' })
+    }
+    try {
+        console.log(req.params._id.trim());
+        if (req.params._id){
+            let novela = await Novela.findById( req.params._id.trim() );
+            console.log(novela._id);
+            let usuario = await Usuario.findById( novela.autor.autor_id );
+            console.log(usuario._id);
+            // console.log(usuario);
+            if (!usuario){
+                return res.status(400).json(
+                    { error: 'Error al buscar el usuario en la base de datos' }
+                )
+            }
+            console.log(req.usuario.email + " " + usuario.email);
+            if( req.usuario.email != usuario.email ){
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+
+            if(novela){
+                console.log(usuario.novelasPublicadas);
+                let posicionNovela = usuario.novelasPublicadas.findIndex(elemento =>{ elemento.novela_id == novela._id });
+                console.log(posicionNovela);
+                delete usuario.novelasPublicadas[posicionNovela];
+                // novela.delete();
+                // usuario.save();
+            }
+        }else{
+            res.status(400).json({ error: 'Error al crear novela' })
+        } 
+    } catch (error) {
+        res.status(400).json({ error })
+        return;
+    }
+    return res.status(200).json({
+        error: null,
+        data: 'Novela eliminada con éxito'
     })
 })
 
