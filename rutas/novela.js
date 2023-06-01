@@ -67,8 +67,8 @@ router.post('/nueva', validarToken, async (req, res) => {
                 autor : autorNovela,
                 titulo: req.body.titulo,
                 descripcion: req.body.descripcion,
-                generos: req.body.generos[0].split(','),
-                etiquetas: req.body.etiquetas[0].split(','),
+                generos: req.body.generos,
+                etiquetas: req.body.etiquetas,
                 imagen: nombreImagen
             });
             const novelaGuardada = await novela.save();
