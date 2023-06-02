@@ -219,10 +219,12 @@ router.put('/:_id', validarToken, async (req, res) => {
                 imagen : nombreImagen
             })
             if (novelaGuardada) {
-                const novelaEditada = { novela_id: novelaGuardada._id, titulo: novelaGuardada.titulo, descripcion: novelaGuardada.descripcion, fechaCreacion: novelaGuardada.fechaCreacion, imagen: novelaGuardada.imagen };
                 let posicionNovela = usuario.novelasPublicadas.findIndex((elemento) => elemento.novela_id.toString() == novela._id);
-                Object.assign(usuario.novelasPublicadas[posicionNovela], novelaEditada);
-                // console.log(usuario.novelasPublicadas);
+                usuario.novelasPublicadas[posicionNovela].titulo =  novelaGuardada.titulo;
+                usuario.novelasPublicadas[posicionNovela].descripcion =  novelaGuardada.descripcion;
+                usuario.novelasPublicadas[posicionNovela].generos =  novelaGuardada.generos;
+                usuario.novelasPublicadas[posicionNovela].etiquetas =  novelaGuardada.etiquetas;
+                usuario.novelasPublicadas[posicionNovela].imagen =  novelaGuardada.imagen;
                 await usuario.save();
             }
         } else {
