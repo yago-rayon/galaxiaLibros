@@ -29,12 +29,16 @@ const novelaSchema = mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    capitulos: {
+    fechaUltimoCapitulo:{
+        type: Date
+    },
+    listaCapitulos: {
         type: [
             {
                 numero: Number,
                 titulo: String,
-                contenido: String
+                contenido: String,
+                fechaCreacion: Date
             }
         ]
     },
@@ -43,8 +47,12 @@ const novelaSchema = mongoose.Schema({
         default: 0
     },
     valoraciones: {
-        type: Array,
-        default: []
+        type: [
+            {
+                emailUsuario: String,
+                puntuacion: Number
+            }
+        ]
     },
     visitas:{
         type: Number,

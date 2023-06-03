@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const { isNumber } = require('@hapi/joi/lib/common');
 const Novela = require('../modelos/Novela');
 const Usuario = require('../modelos/Usuario');
 const validarToken = require('./validarToken');
@@ -24,7 +25,6 @@ router.post('/nueva', validarToken, async (req, res) => {
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
         return res.status(401).json({ error: 'No tienes permisos para crear una novela.' })
     }
-
     // Validar Novela
     const { error } = schemaNovela.validate(req.body)
     if (error) {
@@ -32,7 +32,6 @@ router.post('/nueva', validarToken, async (req, res) => {
             { error: error.details[0].message }
         )
     }
-
     // Validar titulo único 
     const tituloExiste = await Novela.findOne({ titulo: req.body.titulo });
     if (tituloExiste) {
@@ -40,7 +39,6 @@ router.post('/nueva', validarToken, async (req, res) => {
             { error: 'El titulo no está disponible' }
         )
     }
-
     try {
 
         if (req.usuario.email) {
@@ -87,6 +85,47 @@ router.post('/nueva', validarToken, async (req, res) => {
     return res.status(200).json({
         error: null,
         data: 'Novela creada con éxito'
+    })
+})
+
+router.post('/puntuar/:_id', validarToken, async (req, res) => {
+    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+        return res.status(401).json({ error: 'Tienes que estar logueado para puntuar' })
+    }
+    if (!req.usuario.email) {
+        return res.status(401).json({ error: 'Tienes que estar logueado para puntuar' })
+    }
+    if(!req.params._id){
+        return res.status(400).json({ error: 'Error al pasar el ID de novela' })
+    }
+    try {
+        let usuario = await Usuario.findOne({ email: req.usuario.email });
+        if (!usuario) {
+            return res.status(400).json(
+                { error: 'Error al buscar el usuario en la base de datos' }
+            )
+        }
+        let novela = await Novela.findById(req.params._id);
+        if(!novela){
+            return res.status(400).json({ error: 'No existe la novela a puntuar' })
+        }
+        if(req.body.puntuacion &&  !isNaN(req.body.puntuacion) && (req.body.puntuacion >= 0 && req.body.puntuacion <=10)){
+            let posicionNovela = novela.valoraciones.findIndex(valoracion=> valoracion.emailUsuario == usuario.email);
+            if (posicionNovela != -1){
+                novela.valoraciones[posicionNovela].puntuacion = req.body.puntuacion;
+            }else{
+                novela.valoraciones.push({ emailUsuario: usuario.email, puntuacion: req.body.puntuacion});
+            }
+            let totalPuntuaciones = novela.valoraciones.reduce((total,siguiente)=> total + siguiente.puntuacion, 0);
+            novela.puntuacion = (totalPuntuaciones / novela.valoraciones.length) || 0;
+            await novela.save();
+        }
+    } catch (error) {
+        return res.status(400).json({ error });
+    }
+    return res.status(200).json({
+        error: null,
+        data: 'Novela puntuada con exito'
     })
 })
 
@@ -157,7 +196,7 @@ router.get('/', async (req, res) => {
         )
     }
     return res.status(200).json(
-        { novelas: novelas }
+        { error: null, novelas: novelas }
     )
 })
 
@@ -169,37 +208,49 @@ router.put('/:_id', validarToken, async (req, res) => {
         return res.status(401).json({ error: 'Error al recibir parámetros' })
     }
     // Validar Novela
-    const { error } = schemaNovela.validate(req.body)
+    const { error } = schemaNovela.validate(req.body);
     if (error) {
         return res.status(400).json(
             { error: error.details[0].message }
         )
     }
 
-    // Validar titulo único 
+    // Validar titulo único y recuperar novela
     let novela = await Novela.findById(req.params._id);
+    if (req.body.titulo != novela.titulo) {
+        let tituloExiste = await Novela.findOne({ titulo: req.body.titulo });
+        if (tituloExiste) {
+            return res.status(400).json(
+                { error: 'El titulo ya existe' }
+            )
+        }
+    }
     if (!novela) {
         return res.status(400).json(
-            { error: 'La novela a editar no existe' }
+            { error: 'Error al buscar la novela en la BDD' }
         )
     }
 
     try {
+        //Validar que el usuario sea el creador o Admin
         if (req.usuario.email) {
             let usuario = await Usuario.findById(novela.autor.autor_id);
             if (!usuario || usuario.email != req.usuario.email) {
-                return res.status(400).json(
-                    { error: 'Error de usuario' }
-                )
+                if (req.usuario.rol != 'Admin') {
+                    return res.status(400).json(
+                        { error: 'Error de usuario' }
+                    )
+                }
             }
             let nombreImagen = novela.imagen;
             if (req.file) {
-                let  rutaImagenABorrar = 'assets/img/'+novela.imagen;
-                console.log(rutaImagenABorrar);
-                if (novela.imagen != 'placeholder.png' && fs.existsSync(rutaImagenABorrar)){
-                    fs.rm(rutaImagenABorrar,(error)=>{ if (error) {
-                        return res.status(400).json({ error: 'Error al subir imagen' })
-                    } });
+                let rutaImagenABorrar = 'assets/img/' + novela.imagen;
+                if (novela.imagen != 'placeholder.png' && fs.existsSync(rutaImagenABorrar)) {
+                    fs.rm(rutaImagenABorrar, (error) => {
+                        if (error) {
+                            return res.status(400).json({ error: 'Error al subir imagen' })
+                        }
+                    });
                 }
                 let imagen = req.file;
                 const extensionImagen = mime.extension(imagen.mimetype);
@@ -211,20 +262,20 @@ router.put('/:_id', validarToken, async (req, res) => {
                     }
                 });
             }
-            const novelaGuardada = await Novela.findByIdAndUpdate(novela._id,{ 
-                titulo : req.body.titulo || novela.titulo, 
+            const novelaGuardada = await Novela.findByIdAndUpdate(novela._id, {
+                titulo: req.body.titulo || novela.titulo,
                 descripcion: req.body.descripcion || novela.descripcion,
                 generos: req.body.generos || novela.generos,
-                etiquetas : req.body.etiquetas || novela.etiquetas,
-                imagen : nombreImagen
+                etiquetas: req.body.etiquetas || novela.etiquetas,
+                imagen: nombreImagen
             })
             if (novelaGuardada) {
                 let posicionNovela = usuario.novelasPublicadas.findIndex((elemento) => elemento.novela_id.toString() == novela._id);
-                usuario.novelasPublicadas[posicionNovela].titulo =  novelaGuardada.titulo;
-                usuario.novelasPublicadas[posicionNovela].descripcion =  novelaGuardada.descripcion;
-                usuario.novelasPublicadas[posicionNovela].generos =  novelaGuardada.generos;
-                usuario.novelasPublicadas[posicionNovela].etiquetas =  novelaGuardada.etiquetas;
-                usuario.novelasPublicadas[posicionNovela].imagen =  novelaGuardada.imagen;
+                usuario.novelasPublicadas[posicionNovela].titulo = novelaGuardada.titulo;
+                usuario.novelasPublicadas[posicionNovela].descripcion = novelaGuardada.descripcion;
+                usuario.novelasPublicadas[posicionNovela].generos = novelaGuardada.generos;
+                usuario.novelasPublicadas[posicionNovela].etiquetas = novelaGuardada.etiquetas;
+                usuario.novelasPublicadas[posicionNovela].imagen = novelaGuardada.imagen;
                 await usuario.save();
             }
         } else {
@@ -239,5 +290,6 @@ router.put('/:_id', validarToken, async (req, res) => {
         data: 'Novela creada con éxito'
     })
 })
+
 
 module.exports = router;

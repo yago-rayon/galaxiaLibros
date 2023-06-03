@@ -28,7 +28,6 @@ router.get('/', validarToken, async (req, res) => {
 })
 
 router.get('/:email', validarToken, async (req, res) => {
-
     let usuarioEncontrado = await Usuario.findOne({ email: req.params.email });
     if (!usuarioEncontrado) {
         return res.status(400).json(
@@ -48,7 +47,6 @@ router.post('/', validarToken, async (req, res) => {
                 {error: 'Acceso solo para administradores'}
             )
         }
-
         // Validar Usuario
         const { error } = schemaUsuario.validate(req.body)
         if (error) {
