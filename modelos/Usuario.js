@@ -37,10 +37,11 @@ const usuarioSchema = mongoose.Schema({
     },
     estado:{
         type: String,
-        default: 'Activo'
+        default: 'Inactivo'
     },
     imagen:{
-        type: String
+        type: String,
+        default: 'usuarioDefecto.png'
     }
 })
 usuarioSchema.plugin(paginacion);

@@ -8,12 +8,12 @@ const Joi = require('@hapi/joi');
 const schemaRegistro = Joi.object({
     nickname: Joi.string().min(6).max(255).required(),
     email: Joi.string().min(6).max(255).required().email(),
-    password: Joi.string().min(6).max(1024).required()
+    password: Joi.string().min(6).max(255).pattern(new RegExp('^[a-zA-Z0-9,.]{3,30}$')).required()
 })
 
 const schemaLogin = Joi.object({
     email: Joi.string().min(6).max(255).required().email(),
-    password: Joi.string().min(6).max(255).required()
+    password: Joi.string().min(6).max(255).pattern(new RegExp('^[a-zA-Z0-9,.]{3,30}$')).required()
 })
 // Declaracion Bcrypt
 const bcrypt = require('bcrypt');
@@ -94,11 +94,24 @@ router.post('/login',async(req,res)=>{
             { error: 'Contraseña incorrecta'}
         )
     }
+    if(usuario.estado != 'Activo'){
+        if(usuario.estado == 'Baneado'){
+            return res.status(401).json(
+                { error: 'Usuario banneado'}
+            )
+        }
+        if(usuario.estado == 'Inactivo'){
+            return res.status(401).json(
+                { error: 'Falta el usuario por confirmar'}
+            )
+        }
+    }
     //Creación de token JWT
     const token = jwt.sign({
         nickname: usuario.nickname,
         rol: usuario.rol,
-        email: usuario.email
+        email: usuario.email,
+        estado: usuario.estado
     }, process.env.TOKEN_SECRET)
     
     return res.header('auth-token', token).json({
@@ -117,7 +130,7 @@ router.get('/',async(req,res)=>{
         )
     }
     return res.status(200).json(
-        {listaUsuarios: usuarios}
+        { listaUsuarios: usuarios }
     )
     
 })

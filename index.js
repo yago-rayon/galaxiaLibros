@@ -32,6 +32,9 @@ const subidaImagenes = multer({
     fileFilter: function (req, archivo, cb) {
         if (['image/jpeg', 'image/png'].includes(archivo.mimetype)) {
             cb(null, true);
+        }else{
+            req.errorExtension = 'Error al subir la imagen, solo se aceptan ficheros html';
+            cb(null,false);
         }
     },
     limits: {

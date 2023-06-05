@@ -8,6 +8,7 @@ const validarToken = require('./validarToken');
 const Joi = require('@hapi/joi');
 const fs = require('fs');
 const mime = require('mime-types');
+const { Error } = require('mongoose');
 
 const schemaNovela = Joi.object({
     titulo: Joi.string().min(6).max(255).required(),
@@ -22,6 +23,9 @@ const schemaCapitulo = Joi.object({
 })
 
 router.post('/nueva', validarToken, async (req, res) => {
+    if(req.errorExtension){
+        return res.status(400).json({ error: req.errorExtension })
+    }
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
         return res.status(401).json({ error: 'No tienes permisos para crear una novela.' })
     }
@@ -40,7 +44,6 @@ router.post('/nueva', validarToken, async (req, res) => {
         )
     }
     try {
-
         if (req.usuario.email) {
             let usuario = await Usuario.findOne({ email: req.usuario.email });
             if (!usuario) {
@@ -53,7 +56,7 @@ router.post('/nueva', validarToken, async (req, res) => {
             if (req.file) {
                 let imagen = req.file;
                 const extensionImagen = mime.extension(imagen.mimetype);
-                nombreImagen = imagen.originalname.split(extensionImagen)[0] + '-' + Date.now() + '.' + extensionImagen;
+                nombreImagen = imagen.originalname.split('.')[0] + '-' + Date.now() + '.' + extensionImagen;
                 let rutaImagen = 'assets/img/' + nombreImagen;
                 fs.writeFile(rutaImagen, req.file.buffer, (error) => {
                     if (error) {
@@ -76,7 +79,7 @@ router.post('/nueva', validarToken, async (req, res) => {
                 await usuario.save();
             }
         } else {
-            res.status(400).json({ error: 'Error al crear novela' })
+            return res.status(400).json({ error: 'Error al crear novela' })
         }
     } catch (error) {
         res.status(400).json({ error })
@@ -84,7 +87,162 @@ router.post('/nueva', validarToken, async (req, res) => {
     }
     return res.status(200).json({
         error: null,
-        data: 'Novela creada con éxito'
+        mensaje: 'Novela creada con éxito'
+    })
+})
+router.post('/nuevoCapitulo/:_id', validarToken, async (req, res) => {
+    if (!req.params._id) {
+        return res.status(401).json({ error: 'Error al recibir parámetros' })
+    }
+    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+        return res.status(401).json({ error: 'No tienes permisos para crear un capitulo' })
+    }
+    // Validar Capitulo
+    const { error } = schemaCapitulo.validate(req.body)
+    if (error) {
+        return res.status(400).json(
+            { error: error.details[0].message }
+        )
+    }
+    try {
+        if (req.usuario.email) {
+            let novela = await Novela.findById(req.params._id);
+            let usuario = await Usuario.findById(novela.autor.autor_id);
+            if (!usuario) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            if (!novela) {
+                return res.status(400).json(
+                    { error: 'Error al recuperar la novela' }
+                )
+            }
+            if (req.usuario.email != usuario.email) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            let capitulo = {
+                numero: (novela.listaCapitulos.length+1),
+                titulo: req.body.titulo,
+                contenido: req.body.contenido,
+                fechaCreacion: Date.now()
+            };
+            novela.listaCapitulos.push(capitulo);
+            novela.fechaUltimoCapitulo = capitulo.fechaCreacion;
+            await novela.save();
+        } else {
+            return res.status(400).json({ error: 'Error al crear el capitulo' })
+        }
+    } catch (error) {
+        res.status(400).json({ error })
+        return;
+    }
+    return res.status(200).json({
+        error: null,
+        mensaje: 'Capitulo creado con exito'
+    })
+})
+router.put('/capitulo/:_id/:numero', validarToken, async (req, res) => {
+    if (!req.params._id || !req.params.numero) {
+        return res.status(401).json({ error: 'Error al recibir parámetros' })
+    }
+    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+        return res.status(401).json({ error: 'No tienes permisos para editar un capitulo' })
+    }
+    // Validar Capitulo
+    const { error } = schemaCapitulo.validate(req.body)
+    if (error) {
+        return res.status(400).json(
+            { error: error.details[0].message }
+        )
+    }
+    try {
+        if (req.usuario.email) {
+            let novela = await Novela.findById(req.params._id);
+            let usuario = await Usuario.findById(novela.autor.autor_id);
+            if (!usuario) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            if (!novela) {
+                return res.status(400).json(
+                    { error: 'Error al recuperar la novela' }
+                )
+            }
+            if (req.usuario.email != usuario.email) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo=> capitulo.numero == req.params.numero);
+            let capitulo = novela.listaCapitulos[posicionCapitulo];
+            capitulo.titulo = req.body.titulo || capitulo.titulo;
+            capitulo.contenido = req.body.contenido || capitulo.contenido;
+            await novela.save();
+        } else {
+            return res.status(400).json({ error: 'Error al editar el capitulo' })
+        }
+    } catch (error) {
+        res.status(400).json({ error })
+        return;
+    }
+    return res.status(200).json({
+        error: null,
+        mensaje: 'Capitulo creado con exito'
+    })
+})
+router.delete('/capitulo/:_id/:numero', validarToken, async (req, res) => {
+    if (!req.params._id || !req.params.numero) {
+        return res.status(401).json({ error: 'Error al recibir parámetros' })
+    }
+    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+        return res.status(401).json({ error: 'No tienes permisos para borrar un capitulo' })
+    }
+    // Validar Capitulo
+    const { error } = schemaCapitulo.validate(req.body)
+    if (error) {
+        return res.status(400).json(
+            { error: error.details[0].message }
+        )
+    }
+    try {
+        if (req.usuario.email) {
+            let novela = await Novela.findById(req.params._id);
+            let usuario = await Usuario.findById(novela.autor.autor_id);
+            if (!usuario) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            if (!novela) {
+                return res.status(400).json(
+                    { error: 'Error al recuperar la novela' }
+                )
+            }
+            if (req.usuario.email != usuario.email) {
+                return res.status(400).json(
+                    { error: 'Usuario incorrecto' }
+                )
+            }
+            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo=> capitulo.numero == req.params.numero);
+            novela.listaCapitulos.splice(posicionCapitulo,1);
+            novela.listaCapitulos.forEach((capitulo,indice) => {
+                capitulo.numero = (indice+1);
+            });
+            await novela.save();
+        } else {
+            return res.status(400).json({ error: 'Error al borrar el capitulo' })
+        }
+    } catch (error) {
+        res.status(400).json({ error })
+        return;
+    }
+    return res.status(200).json({
+        error: null,
+        mensaje: 'Capitulo borrado con exito'
     })
 })
 
@@ -125,7 +283,7 @@ router.post('/puntuar/:_id', validarToken, async (req, res) => {
     }
     return res.status(200).json({
         error: null,
-        data: 'Novela puntuada con exito'
+        mensaje: 'Novela puntuada con exito'
     })
 })
 
@@ -168,7 +326,7 @@ router.delete('/:_id', validarToken, async (req, res) => {
     }
     return res.status(200).json({
         error: null,
-        data: 'Novela eliminada con éxito'
+        mensaje: 'Novela eliminada con éxito'
     })
 })
 
@@ -200,7 +358,26 @@ router.get('/', async (req, res) => {
     )
 })
 
+router.get('/:titulo', async (req, res) => {
+    if (!req.params.titulo) {
+        return res.status(401).json({ error: 'Error al recibir parámetros' })
+    }
+    const novela = await Novela.findOne({ titulo: req.params.titulo });
+
+    if (!novela) {
+        return res.status(400).json(
+            { error: 'No hay datos para esta búsqueda' }
+        )
+    }
+    return res.status(200).json(
+        { error: null, novela: novela }
+    )
+})
+
 router.put('/:_id', validarToken, async (req, res) => {
+    if(req.errorExtension){
+        return res.status(400).json({ error: req.errorExtension })
+    }
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
         return res.status(401).json({ error: 'No tienes permisos para editar una novela.' })
     }
@@ -287,9 +464,8 @@ router.put('/:_id', validarToken, async (req, res) => {
     }
     return res.status(200).json({
         error: null,
-        data: 'Novela creada con éxito'
+        mensaje: 'Novela editada con éxito'
     })
 })
-
 
 module.exports = router;
