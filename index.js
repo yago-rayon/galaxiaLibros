@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const bodyparser = require('body-parser');
 const multer = require('multer');
 const mime = require('mime-types');
-
+const path = require('path');
+const cors = require('cors')
 require('dotenv').config()
 
 const app = express();
@@ -11,7 +12,9 @@ const app = express();
 // capturar body
 app.use(bodyparser.urlencoded({ extended: false, limit : '10MB' }));
 app.use(bodyparser.json());
-
+app.use(cors({
+    origin: 'http://localhost:4200'
+}))
 // Conexión a Base de datos
 const uri = `mongodb+srv://${process.env.USUARIO}:${process.env.PASSWORD}@clusterlibreria.aspnvjh.mongodb.net/${process.env.DBNOMBRE}?retryWrites=true&w=majority`;
 const opciones = { useNewUrlParser: true, useUnifiedTopology: true };
@@ -21,8 +24,11 @@ mongoose.connect(uri, opciones)
 
 const subidaImagenes = multer({
     storage: multer.memoryStorage({
-        destination: function (req, file, cb) {
-            cb(null, 'assets/img')
+        destination: function (req, archivo, cb) {
+            if (!fs.existsSync('public/img')){
+                fs.mkdirSync('public/img', { recursive: true });
+            }
+            cb(null, 'public/img')
         },
         filename: function (req, archivo, cb) {
             const extensionArchivo = mime.extension(archivo.mimetype);
@@ -43,6 +49,9 @@ const subidaImagenes = multer({
 });
 
 app.use(subidaImagenes.single('imagen'));
+//Abrimos el acceso a imagenes desde front
+app.use('/public',express.static(path.join(__dirname, '/public')));
+// app.use(express.static('public'));
 
 // importar rutas
 const authRutas = require('./rutas/auth');

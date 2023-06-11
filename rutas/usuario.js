@@ -113,7 +113,7 @@ router.put('/imagen', validarToken, async (req, res) => {
             }
             let nombreImagen = usuario.imagen;
             if (req.file) {
-                let rutaImagenABorrar = 'assets/img/' + usuario.imagen;
+                let rutaImagenABorrar = 'public/img/' + usuario.imagen;
                 if (usuario.imagen != 'usuarioDefecto.png' && fs.existsSync(rutaImagenABorrar)) {
                     fs.rm(rutaImagenABorrar, (error) => {
                         if (error) {
@@ -124,7 +124,7 @@ router.put('/imagen', validarToken, async (req, res) => {
                 let imagen = req.file;
                 const extensionImagen = mime.extension(imagen.mimetype);
                 nombreImagen = imagen.originalname.split('.')[0] + '-' + Date.now() + '.' + extensionImagen;
-                let rutaImagen = 'assets/img/' + nombreImagen;
+                let rutaImagen = 'public/img/' + nombreImagen;
                 fs.writeFile(rutaImagen, req.file.buffer, (error) => {
                     if (error) {
                         return res.status(400).json({ error: 'Error al subir imagen' })

@@ -74,6 +74,7 @@ router.post('/login',async(req,res)=>{
     const { error } = schemaLogin.validate(req.body)
     
     if (error) {
+        console.log(error.details);
         return res.status(400).json(
             {error: error.details[0].message}
         )
@@ -83,7 +84,7 @@ router.post('/login',async(req,res)=>{
     const usuario = await Usuario.findOne({email:req.body.email});
     if (!usuario){
         return res.status(400).json(
-            { error: 'Email incorrecto' }
+            { error: 'Login Incorrecto' }
         )
     }
 
@@ -91,27 +92,30 @@ router.post('/login',async(req,res)=>{
     const passwordValida = await bcrypt.compare(req.body.password,usuario.password);
     if (!passwordValida){
         return res.status(400).json(
-            { error: 'Contraseña incorrecta'}
+            { error: 'Login Incorrecto'}
         )
     }
-    if(usuario.estado != 'Activo'){
-        if(usuario.estado == 'Baneado'){
-            return res.status(401).json(
-                { error: 'Usuario banneado'}
-            )
-        }
-        if(usuario.estado == 'Inactivo'){
-            return res.status(401).json(
-                { error: 'Falta el usuario por confirmar'}
-            )
-        }
-    }
+    // if(usuario.estado != 'Activo'){
+    //     if(usuario.estado == 'Baneado'){
+    //         return res.status(401).json(
+    //             { error: 'Usuario banneado'}
+    //         )
+    //     }
+    //     if(usuario.estado == 'Inactivo'){
+    //         return res.status(401).json(
+    //             { error: 'Falta el usuario por confirmar'}
+    //         )
+    //     }
+    // }
     //Creación de token JWT
     const token = jwt.sign({
+        _id: usuario._id,
         nickname: usuario.nickname,
         rol: usuario.rol,
         email: usuario.email,
         estado: usuario.estado
+    }, "stack",{
+        expiresIn: '2d'
     }, process.env.TOKEN_SECRET)
     
     return res.header('auth-token', token).json({
@@ -120,19 +124,4 @@ router.post('/login',async(req,res)=>{
     }).status(200);
     //Respuesta si todo bien
 })
-
-router.get('/',async(req,res)=>{
-    
-    let usuarios = await Usuario.find();
-    if (!usuarios){
-        return res.status(400).json(
-            { error: 'No hay usuarios' }
-        )
-    }
-    return res.status(200).json(
-        { listaUsuarios: usuarios }
-    )
-    
-})
-
 module.exports = router;

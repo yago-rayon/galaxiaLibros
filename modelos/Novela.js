@@ -42,6 +42,10 @@ const novelaSchema = mongoose.Schema({
             }
         ]
     },
+    numeroCapitulos:{
+        type: Number,
+        default: 0
+    },
     puntuacion: {
         type: Number,
         default: 0
