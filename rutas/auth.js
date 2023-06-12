@@ -74,7 +74,6 @@ router.post('/login',async(req,res)=>{
     const { error } = schemaLogin.validate(req.body)
     
     if (error) {
-        console.log(error.details);
         return res.status(400).json(
             {error: error.details[0].message}
         )
@@ -114,14 +113,30 @@ router.post('/login',async(req,res)=>{
         rol: usuario.rol,
         email: usuario.email,
         estado: usuario.estado
-    }, "stack",{
+    }, 
+    process.env.TOKEN_SECRET,
+    {
         expiresIn: '2d'
-    }, process.env.TOKEN_SECRET)
+    })
     
     return res.header('auth-token', token).json({
         error: null,
-        data: 'Login exitoso'
+        data: token
     }).status(200);
     //Respuesta si todo bien
 })
+
+router.get('/misDatos', validarToken, async (req, res) => {
+    let usuarioEncontrado = await Usuario.findById(req.usuario._id);
+    if (!usuarioEncontrado) {
+        return res.status(400).json(
+            { error: 'No existe el usuario' }
+        )
+    }
+    usuarioEncontrado.password = undefined;
+    return res.status(200).json(
+        { error: null, usuario: usuarioEncontrado }
+    )
+})
+
 module.exports = router;

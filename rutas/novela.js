@@ -3,7 +3,7 @@ const { isNumber } = require('@hapi/joi/lib/common');
 const Novela = require('../modelos/Novela');
 const Usuario = require('../modelos/Usuario');
 const validarToken = require('./validarToken');
-
+const sharp = require('sharp');
 // Validaciones con @hapy/joi
 const Joi = require('@hapi/joi');
 const fs = require('fs');
@@ -13,20 +13,23 @@ const { Error } = require('mongoose');
 const directorioImagenes = 'public/img/';
 
 const schemaNovela = Joi.object({
-    titulo: Joi.string().min(6).max(255).required(),
-    descripcion: Joi.string().min(6).required(),
+    titulo: Joi.string().min(6).max(40).required(),
+    descripcion: Joi.string().min(300).required(),
     generos: Joi.array().items(Joi.string()),
     etiquetas: Joi.array().items(Joi.string())
 })
 
 const schemaCapitulo = Joi.object({
-    titulo: Joi.string().min(6).max(255).required(),
+    titulo: Joi.string().min(6).max(30).required(),
     contenido: Joi.string().required()
 })
 
 
 router.post('/nueva', validarToken, async (req, res) => {
-    if(req.errorExtension){
+    req.body.descripcion = req.body.descripcion.toString();
+    req.body.generos = JSON.parse(req.body.generos);
+    req.body.etiquetas = JSON.parse(req.body.etiquetas);
+    if (req.errorExtension) {
         return res.status(400).json({ error: req.errorExtension })
     }
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
@@ -55,13 +58,14 @@ router.post('/nueva', validarToken, async (req, res) => {
                 )
             }
             let autorNovela = { autor_id: usuario._id, autorNickname: usuario.nickname }
-            let nombreImagen = 'placeholder.png';
+            let nombreImagen = 'placeholder.jpg';
             if (req.file) {
                 let imagen = req.file;
                 const extensionImagen = mime.extension(imagen.mimetype);
                 nombreImagen = imagen.originalname.split('.')[0] + '-' + Date.now() + '.' + extensionImagen;
                 let rutaImagen = directorioImagenes + nombreImagen;
-                fs.writeFile(rutaImagen, req.file.buffer, (error) => {
+                const buffer = await sharp(req.file.buffer).resize(400,600).toBuffer();
+                fs.writeFile(rutaImagen, buffer, (error) => {
                     if (error) {
                         return res.status(400).json({ error: 'Error al subir imagen' })
                     }
@@ -128,7 +132,7 @@ router.post('/:_id/nuevoCapitulo/', validarToken, async (req, res) => {
                 )
             }
             let capitulo = {
-                numero: (novela.listaCapitulos.length+1),
+                numero: (novela.listaCapitulos.length + 1),
                 titulo: req.body.titulo,
                 contenido: req.body.contenido,
                 fechaCreacion: Date.now()
@@ -183,7 +187,7 @@ router.put('/capitulo/:_id/:numero', validarToken, async (req, res) => {
                     { error: 'Usuario incorrecto' }
                 )
             }
-            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo=> capitulo.numero == req.params.numero);
+            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo => capitulo.numero == req.params.numero);
             let capitulo = novela.listaCapitulos[posicionCapitulo];
             capitulo.titulo = req.body.titulo || capitulo.titulo;
             capitulo.contenido = req.body.contenido || capitulo.contenido;
@@ -235,10 +239,10 @@ router.delete('/capitulo/:_id/:numero', validarToken, async (req, res) => {
                     { error: 'Usuario incorrecto' }
                 )
             }
-            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo=> capitulo.numero == req.params.numero);
-            novela.listaCapitulos.splice(posicionCapitulo,1);
-            novela.listaCapitulos.forEach((capitulo,indice) => {
-                capitulo.numero = (indice+1);
+            let posicionCapitulo = novela.listaCapitulos.findIndex(capitulo => capitulo.numero == req.params.numero);
+            novela.listaCapitulos.splice(posicionCapitulo, 1);
+            novela.listaCapitulos.forEach((capitulo, indice) => {
+                capitulo.numero = (indice + 1);
             });
             novela.numeroCapitulos = novela.listaCapitulos.length;
             novela.markModified('listaCapitulos');
@@ -263,7 +267,7 @@ router.post('/puntuar/:_id', validarToken, async (req, res) => {
     if (!req.usuario.email) {
         return res.status(401).json({ error: 'Tienes que estar logueado para puntuar' })
     }
-    if(!req.params._id){
+    if (!req.params._id) {
         return res.status(400).json({ error: 'Error al pasar el ID de novela' })
     }
     try {
@@ -274,17 +278,17 @@ router.post('/puntuar/:_id', validarToken, async (req, res) => {
             )
         }
         let novela = await Novela.findById(req.params._id);
-        if(!novela){
+        if (!novela) {
             return res.status(400).json({ error: 'No existe la novela a puntuar' })
         }
-        if(req.body.puntuacion &&  !isNaN(req.body.puntuacion) && (req.body.puntuacion >= 0 && req.body.puntuacion <=10)){
-            let posicionNovela = novela.valoraciones.findIndex(valoracion=> valoracion.emailUsuario == usuario.email);
-            if (posicionNovela != -1){
+        if (req.body.puntuacion && !isNaN(req.body.puntuacion) && (req.body.puntuacion >= 0 && req.body.puntuacion <= 10)) {
+            let posicionNovela = novela.valoraciones.findIndex(valoracion => valoracion.emailUsuario == usuario.email);
+            if (posicionNovela != -1) {
                 novela.valoraciones[posicionNovela].puntuacion = req.body.puntuacion;
-            }else{
-                novela.valoraciones.push({ emailUsuario: usuario.email, puntuacion: req.body.puntuacion});
+            } else {
+                novela.valoraciones.push({ emailUsuario: usuario.email, puntuacion: req.body.puntuacion });
             }
-            let totalPuntuaciones = novela.valoraciones.reduce((total,siguiente)=> total + siguiente.puntuacion, 0);
+            let totalPuntuaciones = novela.valoraciones.reduce((total, siguiente) => total + siguiente.puntuacion, 0);
             novela.puntuacion = (totalPuntuaciones / novela.valoraciones.length) || 0;
             await novela.save();
         }
@@ -326,7 +330,7 @@ router.delete('/:_id', validarToken, async (req, res) => {
         usuario.novelasPublicadas.splice(posicionNovela, 1);
         fs.mkdir(directorioImagenes, { recursive: true });
         let rutaImagen = directorioImagenes + novela.imagen;
-        if (novela.imagen != 'placeholder.png' && fs.existsSync(rutaImagen)) {
+        if (novela.imagen != 'placeholder.jpg' && fs.existsSync(rutaImagen)) {
             fs.rm(rutaImagen);
         }
         await Novela.findByIdAndDelete(novela._id);
@@ -374,14 +378,14 @@ router.get('/seguidas', validarToken, async (req, res) => {
         return res.status(401).json({ error: 'No puedes ver la novela' });
     }
 
-    const usuario = await Usuario.findOne({email: req.usuario.email});
-    if (!usuario){
+    const usuario = await Usuario.findOne({ email: req.usuario.email });
+    if (!usuario) {
         return res.status(400).json(
             { error: 'Error al recuperar el usuario' }
         )
     }
     let listaNovelasABuscar = [];
-    usuario.novelasSeguidas.forEach(novela=>{
+    usuario.novelasSeguidas.forEach(novela => {
         listaNovelasABuscar.push(novela);
     });
     const novelas = await Novela.find({ '_id': { $in: usuario.novelasSeguidas } });
@@ -400,10 +404,10 @@ router.put('/seguir/:_id', validarToken, async (req, res) => {
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
         return res.status(401).json({ error: 'No puedes ver la novela' });
     }
-    if (!req.params._id){
+    if (!req.params._id) {
         return res.status(401).json({ error: 'Error al mandar los parámetros' });
     }
-    try{
+    try {
 
         const novela = await Novela.findById(req.params._id);
         if (!novela) {
@@ -412,39 +416,43 @@ router.put('/seguir/:_id', validarToken, async (req, res) => {
             )
         }
 
-        let usuario = await Usuario.findOne({email: req.usuario.email});
+        let usuario = await Usuario.findOne({ email: req.usuario.email });
 
-        if (!usuario){
+        if (!usuario) {
             return res.status(400).json(
                 { error: 'Error al recuperar el usuario' }
             )
         }
 
         let posicionNovela = usuario.novelasSeguidas.findIndex(id => id == req.params._id);
-        if(posicionNovela != -1){
-            return res.status(400).json(
-                { error: 'Ya sigues esta novela' }
-            )
+        var novelaSeguida;
+        if (posicionNovela != -1) {
+            usuario.novelasSeguidas.splice(posicionNovela, 1);
+            novelaSeguida = 0;
+        } else {
+            usuario.novelasSeguidas.push(req.params._id);
+            novelaSeguida = 1;
         }
-        usuario.novelasSeguidas.push(req.params._id);
         usuario.markModified('novelasSeguidas');
-        await usuario.save();
-        
-    }catch(error){
+        const usuarioGuardado = await usuario.save();
+        if (usuarioGuardado) {
+            usuarioGuardado.password = undefined;
+        }
+    } catch (error) {
         return res.status(400).json(
             { error: 'Error al hacer la operacion' }
         )
     }
     return res.status(200).json(
-        { error: null, mensaje: 'Novela seguida con éxito' }
+        { error: null, novelaSeguida: novelaSeguida }
     )
 })
 
-router.get('/:titulo', async (req, res) => {
-    if (!req.params.titulo) {
+router.get('/:_id', async (req, res) => {
+    if (!req.params._id) {
         return res.status(401).json({ error: 'Error al recibir parámetros' })
     }
-    const novela = await Novela.findOne({ titulo: req.params.titulo });
+    const novela = await Novela.findById(req.params._id);
 
     if (!novela) {
         return res.status(400).json(
@@ -452,14 +460,14 @@ router.get('/:titulo', async (req, res) => {
         )
     }
     novela.visitas++;
-    try{
+    try {
         await novela.save();
-    }catch(error){
+    } catch (error) {
         return res.status(400).json(
             { error: error }
         )
     }
-    
+
     return res.status(200).json(
         { error: null, novela: novela }
     )
@@ -469,21 +477,21 @@ router.get('/buscar/:titulo', async (req, res) => {
     if (!req.params.titulo) {
         return res.status(401).json({ error: 'Error al recibir parámetros' })
     }
-    const novelas = await Novela.find({ titulo: new RegExp(req.params.titulo,"i") });
+    const novelas = await Novela.find({ titulo: new RegExp(req.params.titulo, "i") });
 
-    if (!novelas || novelas.length==0) {
+    if (!novelas || novelas.length == 0) {
         return res.status(400).json(
             { error: 'No hay datos para esta búsqueda' }
         )
     }
-    
+
     return res.status(200).json(
         { error: null, novelas: novelas }
     )
 })
 
 router.put('/:_id', validarToken, async (req, res) => {
-    if(req.errorExtension){
+    if (req.errorExtension) {
         return res.status(400).json({ error: req.errorExtension })
     }
     if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
@@ -515,7 +523,7 @@ router.put('/:_id', validarToken, async (req, res) => {
             )
         }
     }
-    
+
     try {
         //Validar que el usuario sea el creador o Admin
         if (req.usuario.email) {
@@ -531,7 +539,7 @@ router.put('/:_id', validarToken, async (req, res) => {
             if (req.file) {
                 fs.mkdir(directorioImagenes, { recursive: true });
                 let rutaImagenABorrar = directorioImagenes + novela.imagen;
-                if (novela.imagen != 'placeholder.png' && fs.access(rutaImagenABorrar)) {
+                if (novela.imagen != 'placeholder.jpg' && fs.access(rutaImagenABorrar)) {
                     fs.rm(rutaImagenABorrar, (error) => {
                         if (error) {
                             return res.status(400).json({ error: 'Error al subir imagen' })
@@ -542,7 +550,8 @@ router.put('/:_id', validarToken, async (req, res) => {
                 const extensionImagen = mime.extension(imagen.mimetype);
                 nombreImagen = imagen.originalname.split('.')[0] + '-' + Date.now() + '.' + extensionImagen;
                 let rutaImagen = directorioImagenes + nombreImagen;
-                fs.writeFile(rutaImagen, req.file.buffer, (error) => {
+                const buffer = await sharp(req.file.buffer).resize(400,600).toBuffer();
+                fs.writeFile(rutaImagen, buffer, (error) => {
                     if (error) {
                         return res.status(400).json({ error: 'Error al subir imagen' })
                     }
@@ -562,7 +571,6 @@ router.put('/:_id', validarToken, async (req, res) => {
                 usuario.novelasPublicadas[posicionNovela].imagen = novelaGuardada.imagen;
                 usuario.markModified('novelasPublicadas');
                 const usuarioGuardado = await usuario.save();
-                console.log(usuarioGuardado.novelasPublicadas);
             }
         } else {
             res.status(400).json({ error: 'Error al crear novela' })
