@@ -6,14 +6,14 @@ const validarToken = require('../rutas/validarToken');
 const Joi = require('@hapi/joi');
 
 const schemaRegistro = Joi.object({
-    nickname: Joi.string().min(6).max(255).required(),
+    nickname: Joi.string().min(6).max(16).pattern(new RegExp('^[a-zA-Z0-9\-]{6,16}$')).required(),
     email: Joi.string().min(6).max(255).required().email(),
-    password: Joi.string().min(6).max(255).pattern(new RegExp('^[a-zA-Z0-9,.]{3,30}$')).required()
+    password: Joi.string().min(6).max(20).pattern(new RegExp('^[a-zA-Z0-9,.!?¿¡]{6,20}$')).required()
 })
 
 const schemaLogin = Joi.object({
     email: Joi.string().min(6).max(255).required().email(),
-    password: Joi.string().min(6).max(255).pattern(new RegExp('^[a-zA-Z0-9,.]{3,30}$')).required()
+    password: Joi.string().min(6).max(20).pattern(new RegExp('^[a-zA-Z0-9,.]{3,20}$')).required()
 })
 // Declaracion Bcrypt
 const bcrypt = require('bcrypt');
