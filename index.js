@@ -25,9 +25,6 @@ mongoose.connect(uri, opciones)
 const subidaImagenes = multer({
     storage: multer.memoryStorage({
         destination: function (req, archivo, cb) {
-            if (!fs.existsSync('public/img')){
-                fs.mkdirSync('public/img', { recursive: true });
-            }
             cb(null, 'public/img')
         },
         filename: function (req, archivo, cb) {
@@ -50,7 +47,7 @@ const subidaImagenes = multer({
 
 app.use(subidaImagenes.single('imagen'));
 //Abrimos el acceso a imagenes desde front
-app.use('/public',express.static(path.join(__dirname, '/public')));
+app.use('/api/public',express.static(path.join(__dirname, '/public')));
 // app.use(express.static('public'));
 
 // importar rutas
