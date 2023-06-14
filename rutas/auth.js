@@ -61,9 +61,20 @@ router.post('/registro', async (req, res) => {
     });
     try {
         const usuarioGuardado = await usuario.save();
+        const token = jwt.sign({
+            _id: usuarioGuardado._id,
+            nickname: usuarioGuardado.nickname,
+            rol: usuarioGuardado.rol,
+            email: usuarioGuardado.email,
+            estado: usuarioGuardado.estado
+        }, 
+        process.env.TOKEN_SECRET,
+        {
+            expiresIn: '2d'
+        })
         res.json({
             error: null,
-            data: 'Registrado con éxito'
+            data: { data: token}
         })
     } catch (error) {
         res.status(400).json({error})
