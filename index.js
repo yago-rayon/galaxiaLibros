@@ -12,9 +12,16 @@ const app = express();
 // capturar body
 app.use(bodyparser.urlencoded({ extended: false, limit : '10MB' }));
 app.use(bodyparser.json());
-app.use(cors({
-    origin: 'http://localhost:4200'
-}))
+app.use((req,res,next)=>{
+    res.header('Access-Control-Allow-Origin','*');
+    res.header('Access-Control-Allow-Headers','Authorization,X-API-KEY,auth-token,Origin,X-Requested-with,Content-Type,Accept,Access-Control-Allow-Request-Method');
+    res.header('Access-Control-Allow-Methods','GET,POST,PUT,DELETE');
+    res.header('Allow','GET,POST,OPTIONS,PUT,DELETE');
+    next();
+})
+// app.use(cors({
+//     origin: 'http://localhost:4200'
+// }))
 // Conexión a Base de datos
 const uri = `mongodb+srv://${process.env.USUARIO}:${process.env.PASSWORD}@clusterlibreria.aspnvjh.mongodb.net/${process.env.DBNOMBRE}?retryWrites=true&w=majority`;
 const opciones = { useNewUrlParser: true, useUnifiedTopology: true };
@@ -62,7 +69,7 @@ app.use('/api/usuario', usuarioRutas);
 app.use('/api/novela', novelaRutas);
 
 // Iniciar server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Servidor abierto en el puerto: ${PORT}`)
 })
