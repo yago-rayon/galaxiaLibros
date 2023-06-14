@@ -28,8 +28,10 @@ const usuarioSchema = mongoose.Schema({
         default: 'Usuario'
     },
     novelasPublicadas: {
-        type: Array,
-        default: [{ novela_id: ObjectId, titulo: String, descripcion: String, fechaCreacion: Date }]
+        type: [
+            { novela_id: ObjectId, titulo: String, descripcion: String, fechaCreacion: Date }
+        ],
+        default: undefined
     },
     novelasSeguidas: {
         type: Array,

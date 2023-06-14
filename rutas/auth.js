@@ -55,13 +55,15 @@ router.post('/registro', async (req, res) => {
     const usuario = new Usuario({
         nickname: req.body.nickname,
         email: req.body.email,
-        password: passwordHasheada
+        password: passwordHasheada,
+        novelasPublicadas: [],
+        novelasSeguidas: []
     });
     try {
         const usuarioGuardado = await usuario.save();
         res.json({
             error: null,
-            data: usuarioGuardado
+            data: 'Registrado con éxito'
         })
     } catch (error) {
         res.status(400).json({error})

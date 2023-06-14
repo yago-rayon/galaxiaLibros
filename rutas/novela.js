@@ -20,7 +20,7 @@ const schemaNovela = Joi.object({
 
 const schemaCapitulo = Joi.object({
     titulo: Joi.string().min(6).max(30).required(),
-    contenido: Joi.string().required()
+    contenido: Joi.string().min(300).required()
 })
 
 
@@ -105,7 +105,7 @@ router.post('/:_id/nuevoCapitulo/', validarToken, async (req, res) => {
     if (!req.params._id) {
         return res.status(401).json({ error: 'Error al recibir parámetros' })
     }
-    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+    if (!req.usuario.rol || (req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin')) {
         return res.status(401).json({ error: 'No tienes permisos para crear un capitulo' })
     }
     // Validar Capitulo
@@ -325,7 +325,6 @@ router.delete('/:_id', validarToken, async (req, res) => {
                 { error: 'Usuario incorrecto' }
             )
         }
-        
         let posicionNovela = usuario.novelasPublicadas.findIndex((elemento) => elemento.novela_id.toString() == novela._id);
         usuario.novelasPublicadas.splice(posicionNovela, 1);
         let rutaImagenABorrar = directorioImagenes + novela.imagen;
@@ -369,17 +368,21 @@ router.get('/buscadorDinamico/', async (req, res) => {
             { error: 'No hay datos para esta búsqueda' }
         )
     }
-    novelas.docs.forEach((novela)=>{
-        novela.listaCapitulos = undefined;
-    })
+    if(novelas.docs.length == 1){
+        novelas.docs[0].listaCapitulos = undefined;
+    }else{
+        novelas.docs.forEach((novela)=>{
+            novela.listaCapitulos = undefined;
+        });
+    }
     return res.status(200).json(
         { error: null, novelas: novelas }
     )
 })
 
 router.get('/seguidas', validarToken, async (req, res) => {
-    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
-        return res.status(401).json({ error: 'No tienes novelas seguidas' });
+    if (!req.usuario.rol || (req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin')) {
+        return res.status(401).json({ error: 'No estás logueado' });
     }
 
     const usuario = await Usuario.findOne({ email: req.usuario.email });
@@ -388,27 +391,31 @@ router.get('/seguidas', validarToken, async (req, res) => {
             { error: 'Error al recuperar el usuario' }
         )
     }
-    let listaNovelasABuscar = [];
-    usuario.novelasSeguidas.forEach(novela => {
-        listaNovelasABuscar.push(novela.toString());
-    });
-    
-    let novelas= await Novela.find().where('_id').in(listaNovelasABuscar).exec();
+    if(usuario.novelasSeguidas.length < 1){
+        return res.status(400).json(
+            { error: 'Aún no has seguido ninguna novela' }
+        )
+    }
+    let novelas= await Novela.find().where('_id').in(usuario.novelasSeguidas).exec();
     if (!novelas) {
         return res.status(404).json(
             { error: 'No hay datos para esta búsqueda' }
         )
     }
-    novelas.forEach(novela=>{
-        novela.listaCapitulos = undefined;
-    })
+    if(novelas.length == 1){
+        novelas[0].listaCapitulos = undefined;
+    }else{
+        novelas.forEach((novela)=>{
+            novela.listaCapitulos = undefined;
+        });
+    }
     return res.status(200).json(
         { error: null, novelas: novelas }
     )
 })
 
 router.get('/publicadas', validarToken, async (req, res) => {
-    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+    if (!req.usuario.rol || (req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin')) {
         return res.status(401).json({ error: 'No tienes novelas seguidas' });
     }
     try{
@@ -419,14 +426,29 @@ router.get('/publicadas', validarToken, async (req, res) => {
             )
         }
         let listaNovelasABuscar = [];
-        usuario.novelasPublicadas.forEach(novela => {
-            listaNovelasABuscar.push(novela.novela_id.toString());
-        });
+        if(usuario.novelasPublicadas.length == 1){
+            if(usuario.novelasPublicadas[0]){
+                listaNovelasABuscar.push(usuario.novelasPublicadas[0].novela_id.toString());
+            }
+        }else{
+            usuario.novelasPublicadas.forEach((novela)=>{
+                if(novela.novela_id){
+                    listaNovelasABuscar.push(novela.novela_id.toString());
+                }
+            });
+        }
         const novelas= await Novela.find().where('_id').in(listaNovelasABuscar).exec();
         if (!novelas || novelas.length == 0) {
             return res.status(404).json(
                 { error: 'No hay datos para esta búsqueda' }
             )
+        }
+        if(novelas.length == 1){
+            novelas[0].listaCapitulos = undefined;
+        }else{
+            novelas.forEach((novela)=>{
+                novela.listaCapitulos = undefined;
+            });
         }
         return res.status(200).json(
             { error: null, novelas: novelas }
@@ -440,7 +462,7 @@ router.get('/publicadas', validarToken, async (req, res) => {
 })
 
 router.put('/seguir/:_id', validarToken, async (req, res) => {
-    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+    if (!req.usuario.rol || (req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin')) {
         return res.status(401).json({ error: 'No puedes ver la novela' });
     }
     if (!req.params._id) {
@@ -525,7 +547,7 @@ router.get('/buscar/:titulo', async (req, res) => {
                 { error: 'No hay datos para esta búsqueda' }
             )
         }
-        if(novelas.length == 1){
+        if(novelas.docs.length == 1){
             novelas.docs[0].listaCapitulos = undefined;
         }else{
             novelas.docs.forEach((novela)=>{
@@ -557,7 +579,7 @@ router.get('/buscarGenero/:genero', async (req, res) => {
                 { error: 'No hay datos para esta búsqueda' }
             )
         }
-        if(novelas.length == 1){
+        if(novelas.docs.length == 1){
             novelas.docs[0].listaCapitulos = undefined;
         }else{
             novelas.docs.forEach((novela)=>{
@@ -587,12 +609,14 @@ router.get('/buscarEtiqueta/:etiqueta', async (req, res) => {
             return res.status(404).json(
                 { error: 'No hay datos para esta búsqueda' }
             )
+        }
+        if(novelas.docs.length == 1){
+            novelas.docs[0].listaCapitulos = undefined;
         }else{
             novelas.docs.forEach((novela)=>{
                 novela.listaCapitulos = undefined;
             });
         }
-        console.log(novelas)
         return res.status(200).json(
             { error: null, novelas: novelas }
         )
@@ -610,7 +634,7 @@ router.put('/:_id', validarToken, async (req, res) => {
     if (req.errorExtension) {
         return res.status(400).json({ error: req.errorExtension })
     }
-    if (req.usuario.rol && req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin') {
+    if (!req.usuario.rol || (req.usuario.rol != 'Usuario' && req.usuario.rol != 'Admin')) {
         return res.status(401).json({ error: 'No tienes permisos para editar una novela.' })
     }
     if (!req.params._id) {
